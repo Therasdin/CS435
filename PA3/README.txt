@@ -91,3 +91,10 @@ Utils.java
 Config.java
   - DEFAULT_DAMPING_FACTOR = 0.85
   - DEFAULT_ITERATIONS = 25
+------------------------------------------------------------
+TEST RESULTS SHOULD BE
+------------------------------------------------------------
+PageA    0.3125
+PageB    0.2812
+PageC    0.2187
+PageD    0.1875
