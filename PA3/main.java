@@ -19,7 +19,6 @@ import java.util.List;
  */
 public class Main {
     public static void main(String[] args) {
-        // Validate input arguments
         if (args.length < 3) {
             System.err.println("Usage: Main <titlesFile> <linksFile> <outputDir>");
             System.exit(1);
@@ -29,40 +28,34 @@ public class Main {
         String linksFile = args[1];
         String outputDir = args[2];
 
-        // Initialize Spark configuration and context
         SparkConf conf = new SparkConf().setAppName("WikipediaPageRank");
         JavaSparkContext sc = new JavaSparkContext(conf);
 
-        // Load graph data from input files
-        GraphLoader loader = new GraphLoader(sc);
-        JavaPairRDD<Integer, String> titles = loader.loadTitles(titlesFile);
-        JavaPairRDD<Integer, List<Integer>> links = loader.loadLinks(linksFile);
+        try {
+            GraphLoader loader = new GraphLoader(sc);
+            JavaPairRDD<Integer, String> titles = loader.loadTitles(titlesFile);
+            JavaPairRDD<Integer, List<Integer>> links = loader.loadLinks(linksFile);
 
-        // Run Ideal PageRank algorithm
-        IdealPageRank idealPR = new IdealPageRank(sc);
-        JavaPairRDD<Integer, Double> idealRanks = idealPR.computePageRank(links, 25);
+            IdealPageRank idealPR = new IdealPageRank(sc);
+            JavaPairRDD<Integer, Double> idealRanks = idealPR.computePageRank(links, 25);
+            JavaPairRDD<String, Double> idealResults = idealRanks.join(titles)
+                    .mapToPair(pair -> new Tuple2<>(pair._2._2, pair._2._1))
+                    .sortByKey(false);
+            Utils.saveResults(idealResults, outputDir + "/ideal_pagerank");
 
-        // Join with titles and sort by rank descending
-        JavaPairRDD<String, Double> idealResults = idealRanks.join(titles)
-                .mapToPair(pair -> new Tuple2<>(pair._2._2, pair._2._1))
-                .sortByKey(false);
+            TaxationPageRank taxedPR = new TaxationPageRank(sc);
+            JavaPairRDD<Integer, Double> taxedRanks = taxedPR.computePageRank(links, 25, 0.85);
+            JavaPairRDD<String, Double> taxedResults = taxedRanks.join(titles)
+                    .mapToPair(pair -> new Tuple2<>(pair._2._2, pair._2._1))
+                    .sortByKey(false);
+            Utils.saveResults(taxedResults, outputDir + "/taxed_pagerank");
 
-        // Save Ideal PageRank results
-        Utils.saveResults(idealResults, outputDir + "/ideal_pagerank");
-
-        // Run Taxation-based PageRank algorithm
-        TaxationPageRank taxedPR = new TaxationPageRank(sc);
-        JavaPairRDD<Integer, Double> taxedRanks = taxedPR.computePageRank(links, 25, 0.85);
-
-        // Join with titles and sort by rank descending
-        JavaPairRDD<String, Double> taxedResults = taxedRanks.join(titles)
-                .mapToPair(pair -> new Tuple2<>(pair._2._2, pair._2._1))
-                .sortByKey(false);
-
-        // Save Taxation PageRank results
-        Utils.saveResults(taxedResults, outputDir + "/taxed_pagerank");
-
-        // Stop Spark context
-        sc.stop();
+        } catch (Exception e) {
+            System.err.println("Error during execution: " + e.getMessage());
+            e.printStackTrace();
+            System.exit(2);
+        } finally {
+            sc.stop();
+        }
     }
 }
