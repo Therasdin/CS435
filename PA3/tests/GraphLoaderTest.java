@@ -15,7 +15,9 @@ public class GraphLoaderTest {
 
     @BeforeClass
     public static void setupSpark() {
-        SparkConf conf = new SparkConf().setAppName("Test").setMaster("local");
+        SparkConf conf = new SparkConf()
+                .setAppName("GraphLoaderTest")
+                .setMaster("local[*]"); // Use all cores for parallelism
         sc = new JavaSparkContext(conf);
     }
 
@@ -30,9 +32,9 @@ public class GraphLoaderTest {
         JavaPairRDD<Integer, String> titles = loader.loadTitles(path);
         List<String> values = titles.sortByKey().values().collect();
 
-        assertEquals(4, values.size());
-        assertEquals("PageA", values.get(0));
-        assertEquals("PageD", values.get(3));
+        assertEquals("Expected 4 titles", 4, values.size());
+        assertEquals("First title should be PageA", "PageA", values.get(0));
+        assertEquals("Last title should be PageD", "PageD", values.get(3));
     }
 
     @Test
@@ -41,14 +43,26 @@ public class GraphLoaderTest {
         JavaPairRDD<Integer, List<Integer>> links = loader.loadLinks(path);
         List<Integer> targets = links.lookup(1).get(0);
 
-        assertEquals(3, targets.size());
-        assertTrue(targets.contains(2));
-        assertTrue(targets.contains(3));
-        assertTrue(targets.contains(4));
+        assertEquals("Expected 3 links from article 1", 3, targets.size());
+        assertTrue("Should contain link to article 2", targets.contains(2));
+        assertTrue("Should contain link to article 3", targets.contains(3));
+        assertTrue("Should contain link to article 4", targets.contains(4));
+    }
+
+    @Test
+    public void testEmptyLinksLine() {
+        String path = "src/test/resources/test_links_empty.txt";
+        JavaPairRDD<Integer, List<Integer>> links = loader.loadLinks(path);
+        List<Integer> targets = links.lookup(5).get(0); // Assuming line "5:" exists
+
+        assertTrue("Article 5 should have no links", targets.isEmpty());
     }
 
     @AfterClass
     public static void tearDown() {
-        sc.stop();
+        if (sc != null) {
+            sc.stop();
+            sc.close();
+        }
     }
 }
