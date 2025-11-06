@@ -1,14 +1,15 @@
 package edu.csu.pa3;
 
-import org.apache.spark.api.java.JavaRDD;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import scala.Tuple2;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * GraphLoader is responsible for parsing Wikipedia titles and link structure
@@ -48,8 +49,11 @@ public class GraphLoader {
             String[] parts = line.split(":");
             int sourceId = Integer.parseInt(parts[0].trim());
 
+            if (parts.length < 2 || parts[1].trim().isEmpty()) {
+            return new Tuple2<>(sourceId, Collections.emptyList());
+        }
+
             List<Integer> targets = Arrays.stream(parts[1].trim().split("\\s+"))
-                    .skip(1) // skip the count
                     .map(Integer::parseInt)
                     .collect(Collectors.toList());
 

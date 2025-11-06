@@ -1,12 +1,14 @@
 package edu.csu.pa3;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import scala.Tuple2;
-
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * WikipediaBomb simulates a link manipulation attack to boost the PageRank
@@ -35,10 +37,18 @@ public class WikipediaBomb {
             String keyword,
             String targetTitle
     ) {
-        int targetId = titles.filter(pair -> pair._2.equalsIgnoreCase(targetTitle))
-                             .keys()
-                             .first();
+        List<Integer> targetIds = titles.filter(pair -> pair._2.equalsIgnoreCase(targetTitle))
+                                .keys()
+                                .collect();
 
+        if (targetIds.isEmpty()) {
+            System.err.println("Target page not found: " + targetTitle);
+            return links; // No change
+            }
+
+        int targetId = targetIds.get(0);
+
+        
         List<Integer> keywordIds = titles.filter(pair -> pair._2.toLowerCase().contains(keyword.toLowerCase()))
                                          .keys()
                                          .collect();

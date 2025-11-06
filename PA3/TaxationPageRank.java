@@ -1,12 +1,16 @@
 package edu.csu.pa3;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import scala.Tuple2;
-
-import java.util.*;
 
 /**
  * TaxationPageRank computes PageRank values using the damping factor and redistribution from dead-end pages.
@@ -58,10 +62,14 @@ public class TaxationPageRank {
                     .collect());
 
             // Compute total rank from dead ends
-            double deadEndRank = ranks
+            double deadEndRank = 0.0;
+            if (!deadEnds.isEmpty()) {
+                deadEndRank = ranks
                     .filter(pair -> deadEnds.contains(pair._1))
                     .values()
                     .reduce((a, b) -> a + b);
+            }
+
 
             // Distribute rank contributions
             JavaPairRDD<Integer, Double> contributions = completeLinks.join(ranks)

@@ -1,25 +1,19 @@
 package edu.csu.pa3;
 
-import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.JavaPairRDD;
-
-import scala.Tuple2;
-
 import java.util.List;
 
-/**
- * Entry point for the Wikipedia PageRank program.
- *
- * Responsibilities:
- *  - Initialize Spark context
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+
+import scala.Tuple2; context
  *  - Load input data (titles and links)
  *  - Run both IdealPageRank and TaxationPageRank
  *  - Optionally run Wikipedia Bomb logic
  *  - Save sorted output to files
  */
 public class Main {
-    public static void main(String[] args) {
+    public static void Main(String[] args) {
         if (args.length < 3) {
             System.err.println("Usage: Main <titlesFile> <linksFile> <outputDir> [bomb]");
             System.exit(1);
@@ -44,7 +38,7 @@ public class Main {
             JavaPairRDD<String, Double> idealResults = idealRanks.join(titles)
                     .mapToPair(pair -> new Tuple2<>(pair._2._2, pair._2._1))
                     .sortByKey(false);
-            Utils.saveResults(idealResults, outputDir + "/ideal_pagerank");
+            Utils.saveResults(idealResults, Config.IDEAL_OUTPUT_PATH);
 
             // Taxation PageRank
             TaxationPageRank taxedPR = new TaxationPageRank(sc);
