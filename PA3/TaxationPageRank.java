@@ -28,14 +28,21 @@ public class TaxationPageRank {
      */
     public JavaPairRDD<Integer, Double> computePageRank(JavaPairRDD<Integer, List<Integer>> links, int iterations, double dampingFactor) {
         // Get all unique article IDs
-        JavaRDD<Integer> allIds = links.keys().union(links.values().flatMap(List::iterator)).distinct();
+        JavaRDD<Integer> allIds = links.keys()
+                .union(links.values().flatMap(List::iterator))
+                .distinct()
+                .cache();
+
         long totalPages = allIds.count();
+        if (totalPages == 0) {
+            return sc.emptyRDD().mapToPair(x -> new Tuple2<>(x, 0.0));
+        }
 
         // Initialize each page with equal rank
         JavaPairRDD<Integer, Double> ranks = allIds.mapToPair(id -> new Tuple2<>(id, 1.0 / totalPages));
 
         // Ensure every page has an entry in the links RDD
-        JavaPairRDD<Integer, List<Integer>> completeLinks = allIds.mapToPair(id -> new Tuple2<>(id, new ArrayList<>()))
+        JavaPairRDD<Integer, List<Integer>> completeLinks = allIds.mapToPair(id -> new Tuple2<>(id, Collections.emptyList()))
                 .union(links)
                 .reduceByKey((a, b) -> {
                     List<Integer> combined = new ArrayList<>(a);
@@ -45,21 +52,20 @@ public class TaxationPageRank {
 
         for (int i = 0; i < iterations; i++) {
             // Identify dead-end pages (no outbound links)
-            Set<Integer> deadEnds = completeLinks.filter(pair -> pair._2.isEmpty())
+            Set<Integer> deadEnds = new HashSet<>(completeLinks
+                    .filter(pair -> pair._2.isEmpty())
                     .keys()
-                    .collect()
-                    .stream()
-                    .collect(HashSet::new, HashSet::add, HashSet::addAll);
+                    .collect());
 
             // Compute total rank from dead ends
-            double deadEndRank = ranks.filter(pair -> deadEnds.contains(pair._1))
+            double deadEndRank = ranks
+                    .filter(pair -> deadEnds.contains(pair._1))
                     .values()
-                    .reduce(Double::sum);
+                    .reduce((a, b) -> a + b);
 
             // Distribute rank contributions
             JavaPairRDD<Integer, Double> contributions = completeLinks.join(ranks)
                     .flatMapToPair(pair -> {
-                        Integer sourceId = pair._1;
                         List<Integer> targets = pair._2._1;
                         Double rank = pair._2._2;
 
@@ -74,12 +80,10 @@ public class TaxationPageRank {
                     });
 
             // Sum contributions and apply damping + dead-end redistribution
-            ranks = contributions.reduceByKey(Double::sum)
-                    .mapValues(contrib -> (1 - dampingFactor) / totalPages + dampingFactor * contrib)
-                    .mapToPair(pair -> {
-                        double redistributed = dampingFactor * deadEndRank / totalPages;
-                        return new Tuple2<>(pair._1, pair._2 + redistributed);
-                    });
+            double redistribution = dampingFactor * deadEndRank / totalPages;
+            ranks = contributions
+                    .reduceByKey(Double::sum)
+                    .mapValues(contrib -> (1 - dampingFactor) / totalPages + dampingFactor * contrib + redistribution);
         }
 
         return ranks;
