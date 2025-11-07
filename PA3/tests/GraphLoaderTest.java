@@ -1,4 +1,4 @@
-package edu.csu.pa3;
+package edu.csu.pa3.tests;
 
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.SparkConf;
