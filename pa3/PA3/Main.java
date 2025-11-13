@@ -1,18 +1,9 @@
 package edu.csu.pa3;
 
+import java.io.ObjectInputFilter.Config;
 import java.util.List;
 
-import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaSparkContext;
-import edu.csu.pa3.constants.Config;
-
-import scala.Tuple2; 
-/**
- *  - Load input data (titles and links)
- *  - Run both IdealPageRank and TaxationPageRank
- *  - Optionally run Wikipedia Bomb logic
- *  - Save sorted output to files
+import org.jcp.xml.dsig.internal.dom.Utils;
  */
 public class Main {
     public static void Main(String[] args) {
