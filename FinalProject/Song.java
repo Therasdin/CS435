@@ -1,63 +1,50 @@
 package FinalProject;
 
-import java.util.Arrays;
-import java.util.List;
+import java.io.Serializable;
 
-public class Song {
+/**
+ * Song Data Model - used by Spark to create a DataFrame
+ */
+public class Song implements Serializable {
+
     private String title;
-    private String tag;          // genre
+    private String tag;
     private String artist;
-    private int year;
+    private String year;
     private long views;
-    private List<String> features;
+    private String features;
     private String lyrics;
     private String id;
-    private String languageCld3;
-    private String languageFt;
     private String language;
 
-    public Song(String title, String tag, String artist, int year, long views,
-                List<String> features, String lyrics, String id,
-                String languageCld3, String languageFt, String language) {
-        this.title = title;
-        this.tag = tag;
-        this.artist = artist;
-        this.year = year;
-        this.views = views;
-        this.features = features;
-        this.lyrics = lyrics;
-        this.id = id;
-        this.languageCld3 = languageCld3;
-        this.languageFt = languageFt;
-        this.language = language;
-    }
+    // Empty constructor required for Spark
+    public Song() {}
 
-    // Convenience constructor for comma-separated features
-    public static List<String> parseFeatures(String featureString) {
-        if (featureString == null || featureString.isEmpty()) return List.of();
-        // remove braces and quotes like {"Cam\\'ron","Opera Steve"}
-        String clean = featureString.replaceAll("[{}\"\\\\]", "");
-        String[] parts = clean.split(",");
-        return Arrays.asList(parts);
-    }
-
-    // Getters
+    // Getters and setters (Spark requires proper JavaBean format)
     public String getTitle() { return title; }
-    public String getTag() { return tag; }
-    public String getArtist() { return artist; }
-    public int getYear() { return year; }
-    public long getViews() { return views; }
-    public List<String> getFeatures() { return features; }
-    public String getLyrics() { return lyrics; }
-    public String getId() { return id; }
-    public String getLanguageCld3() { return languageCld3; }
-    public String getLanguageFt() { return languageFt; }
-    public String getLanguage() { return language; }
+    public void setTitle(String title) { this.title = title; }
 
-    @Override
-    public String toString() {
-        return "Song [title=" + title + ", tag=" + tag +
-               ", artist=" + artist + ", year=" + year +
-               ", views=" + views + ", id=" + id + "]";
-    }
+    public String getTag() { return tag; }
+    public void setTag(String tag) { this.tag = tag; }
+
+    public String getArtist() { return artist; }
+    public void setArtist(String artist) { this.artist = artist; }
+
+    public String getYear() { return year; }
+    public void setYear(String year) { this.year = year; }
+
+    public long getViews() { return views; }
+    public void setViews(long views) { this.views = views; }
+
+    public String getFeatures() { return features; }
+    public void setFeatures(String features) { this.features = features; }
+
+    public String getLyrics() { return lyrics; }
+    public void setLyrics(String lyrics) { this.lyrics = lyrics; }
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+
+    public String getLanguage() { return language; }
+    public void setLanguage(String language) { this.language = language; }
 }
