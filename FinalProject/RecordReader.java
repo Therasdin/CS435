@@ -1,98 +1,61 @@
 package FinalProject;
 
-import com.opencsv.CSVReader;
-import com.opencsv.exceptions.CsvValidationException;
+import java.util.Collections;
+import java.util.Iterator;
+
 import org.apache.spark.api.java.function.FlatMapFunction;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import com.opencsv.CSVParser;
+import com.opencsv.CSVParserBuilder;
 
 /**
- * RecordReader for parsing Genius Song Lyrics CSV
- * Handles multi-line lyrics and quoted fields
+ * RecordReader - Converts CSV lines into Song objects
+ * Handles messy CSV fields (quotes, commas inside lyrics)
  */
 public class RecordReader implements FlatMapFunction<String, Song> {
-    
-    private static final int EXPECTED_FIELDS = 11;
-    
+
+    private final CSVParser parser;
+
+    public RecordReader() {
+        this.parser = new CSVParserBuilder()
+                .withSeparator(',')
+                .withQuoteChar('"')
+                .withEscapeChar('\\')
+                .build();
+    }
+
     @Override
-    public Iterator<Song> call(String line) throws Exception {
-        List<Song> songs = new ArrayList<>();
-        
-        // Skip header line
-        if (line.startsWith("title,tag,artist")) {
-            return songs.iterator();
-        }
-        
+    public Iterator<Song> call(String line) {
+
         try {
-            // Parse CSV line using OpenCSV (handles quotes and escapes)
-            CSVReader reader = new CSVReader(new StringReader(line));
-            String[] fields = reader.readNext();
-            reader.close();
-            
-            if (fields == null || fields.length < EXPECTED_FIELDS) {
-                // Skip malformed lines
-                return songs.iterator();
+            String[] fields = parser.parseLine(line);
+
+            // Ignore malformed lines
+            if (fields.length < 10) {
+                return Collections.emptyIterator();
             }
-            
-            // Extract fields according to CSV structure:
-            // title,tag,artist,year,views,features,lyrics,id,language_cld3,language_ft,language
-            String title = fields[0].trim();
-            String tag = fields[1].trim();           // Genre
-            String artist = fields[2].trim();
-            
-            int year = parseIntSafe(fields[3]);
-            long views = parseLongSafe(fields[4]);
-            
-            String featuresStr = fields[5].trim();
-            List<String> features = Song.parseFeatures(featuresStr);
-            
-            String lyrics = fields[6].trim();
-            String id = fields[7].trim();
-            String languageCld3 = fields[8].trim();
-            String languageFt = fields[9].trim();
-            String language = fields[10].trim();
-            
-            // Create Song object if required fields are present
-            if (!title.isEmpty() && !lyrics.isEmpty() && !tag.isEmpty()) {
-                Song song = new Song(
-                    title, tag, artist, year, views,
-                    features, lyrics, id,
-                    languageCld3, languageFt, language
-                );
-                songs.add(song);
+
+            Song s = new Song();
+            s.setTitle(fields[0]);
+            s.setTag(fields[1]);
+            s.setArtist(fields[2]);
+            s.setYear(fields[3]);
+
+            try {
+                s.setViews(Long.parseLong(fields[4]));
+            } catch (Exception e) {
+                s.setViews(0);
             }
-            
-        } catch (CsvValidationException | IOException e) {
-            System.err.println("Error parsing line: " + e.getMessage());
-        }
-        
-        return songs.iterator();
-    }
-    
-    /**
-     * Safely parse integer, return 0 if invalid
-     */
-    private int parseIntSafe(String value) {
-        try {
-            return value.isEmpty() ? 0 : Integer.parseInt(value.trim());
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-    
-    /**
-     * Safely parse long, return 0 if invalid
-     */
-    private long parseLongSafe(String value) {
-        try {
-            return value.isEmpty() ? 0L : Long.parseLong(value.trim());
-        } catch (NumberFormatException e) {
-            return 0L;
+
+            s.setFeatures(fields[5]);
+            s.setLyrics(fields[6]);
+            s.setId(fields[7]);
+            s.setLanguage(fields[10]); // final “language” column
+
+            return Collections.singletonList(s).iterator();
+
+        } catch (Exception e) {
+            return Collections.emptyIterator();
         }
     }
 }
