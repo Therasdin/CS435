@@ -1,22 +1,24 @@
 package FinalProject;
 
-import java.util.Collections;
-import java.util.Iterator;
+import java.io.IOException;
 
-import org.apache.spark.api.java.function.FlatMapFunction;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
 
 import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
 
 /**
- * RecordReader - Converts CSV lines into Song objects
- * Handles messy CSV fields (quotes, commas inside lyrics)
+ * RecordReader - Hadoop Mapper that converts CSV lines into Song objects.
+ * Handles messy CSV fields (quotes, commas inside lyrics).
  */
-public class RecordReader implements FlatMapFunction<String, Song> {
+public class RecordReader extends Mapper<LongWritable, Text, Text, Text> {
 
-    private final CSVParser parser;
+    private CSVParser parser;
 
-    public RecordReader() {
+    @Override
+    protected void setup(Context context) {
         this.parser = new CSVParserBuilder()
                 .withSeparator(',')
                 .withQuoteChar('"')
@@ -25,14 +27,15 @@ public class RecordReader implements FlatMapFunction<String, Song> {
     }
 
     @Override
-    public Iterator<Song> call(String line) {
+    protected void map(LongWritable key, Text value, Context context)
+            throws IOException, InterruptedException {
 
         try {
-            String[] fields = parser.parseLine(line);
+            String[] fields = parser.parseLine(value.toString());
 
             // Ignore malformed lines
-            if (fields.length < 10) {
-                return Collections.emptyIterator();
+            if (fields.length < 11) {
+                return;
             }
 
             Song s = new Song();
@@ -52,10 +55,11 @@ public class RecordReader implements FlatMapFunction<String, Song> {
             s.setId(fields[7]);
             s.setLanguage(fields[10]); // final “language” column
 
-            return Collections.singletonList(s).iterator();
+            // Emit songId as key, and a serialized representation as value
+            context.write(new Text(s.getId()), new Text(s.toString()));
 
         } catch (Exception e) {
-            return Collections.emptyIterator();
+            // Skip malformed line
         }
     }
 }
