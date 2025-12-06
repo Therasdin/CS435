@@ -4,25 +4,24 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * SongRecommender - recommends top K similar songs based on lyric content.
- * Uses TF vectors and cosine similarity.
+ * SongRecommender - recommends top K similar songs using TF-IDF + cosine similarity.
  */
 public class SongRecommender {
 
-    // ------------------------
-    // 1. Compute TF map
-    // ------------------------
     private static final Set<String> STOPWORDS = Set.of(
         "the", "and", "is", "a", "to", "in", "of", "on", "for", "with"
     );
 
+    // ------------------------
+    // 1. Term Frequency
+    // ------------------------
     private static Map<String, Integer> termFrequency(String text) {
         Map<String, Integer> tf = new HashMap<>();
         if (text == null) return tf;
 
         String[] tokens = text.toLowerCase()
-                              .replaceAll("[^a-z0-9 ]", " ")
-                              .split("\\s+");
+                .replaceAll("[^a-z0-9 ]", " ")
+                .split("\\s+");
 
         for (String t : tokens) {
             if (t.isBlank() || STOPWORDS.contains(t)) continue;
@@ -32,31 +31,47 @@ public class SongRecommender {
     }
 
     // ------------------------
-    // 2. Build vocabulary
+    // 2. Build Vocabulary & Document Frequency
     // ------------------------
-    private static Set<String> buildVocab(List<Song> songs) {
-        Set<String> vocab = new HashSet<>();
+    private static Map<String, Integer> buildDocFrequency(List<Song> songs) {
+        Map<String, Integer> df = new HashMap<>();
         for (Song s : songs) {
-            if (s.getLyrics() != null) {
-                vocab.addAll(termFrequency(s.getLyrics()).keySet());
+            if (s.getLyrics() == null) continue;
+
+            Set<String> seen = termFrequency(s.getLyrics()).keySet();
+            for (String word : seen) {
+                df.put(word, df.getOrDefault(word, 0) + 1);
             }
         }
-        return vocab;
+        return df;
     }
 
     // ------------------------
-    // 3. Convert TF maps into TF vectors
+    // 3. Build TF-IDF Vector
     // ------------------------
-    private static double[] buildTFVector(Map<String, Integer> tf, List<String> vocabList) {
-        double[] vec = new double[vocabList.size()];
-        for (int i = 0; i < vocabList.size(); i++) {
-            vec[i] = tf.getOrDefault(vocabList.get(i), 0);
+    private static double[] buildTFIDFVector(
+            Map<String, Integer> tf,
+            List<String> vocab,
+            Map<String, Integer> df,
+            int N
+    ) {
+        double[] vec = new double[vocab.size()];
+
+        for (int i = 0; i < vocab.size(); i++) {
+            String word = vocab.get(i);
+            int termCount = tf.getOrDefault(word, 0);
+            int docCount = df.getOrDefault(word, 1);
+
+            double tfValue = termCount;
+            double idf = Math.log((double) N / docCount);
+
+            vec[i] = tfValue * idf;
         }
         return vec;
     }
 
     // ------------------------
-    // 4. Cosine similarity
+    // 4. Cosine Similarity
     // ------------------------
     private static double cosineSimilarity(double[] a, double[] b) {
         double dot = 0, na = 0, nb = 0;
@@ -70,30 +85,33 @@ public class SongRecommender {
     }
 
     // ------------------------
-    // 5. Recommend top K similar songs
+    // 5. Recommend Top K Songs
     // ------------------------
     public static List<Song> recommend(Song target, List<Song> allSongs, int k) {
         if (target == null || target.getLyrics() == null) return Collections.emptyList();
 
-        // Build vocabulary across all songs
-        Set<String> vocab = buildVocab(allSongs);
-        List<String> vocabList = new ArrayList<>(vocab);
+        // Build IDF
+        Map<String, Integer> df = buildDocFrequency(allSongs);
+        List<String> vocabList = new ArrayList<>(df.keySet());
+        int N = allSongs.size();
 
-        // Target vector
-        double[] targetVec = buildTFVector(termFrequency(target.getLyrics()), vocabList);
+        // Target TF-IDF vector
+        double[] targetVec = buildTFIDFVector(
+                termFrequency(target.getLyrics()), vocabList, df, N);
 
-        // Compute similarity for every song
+        // Score all songs
         List<Map.Entry<Song, Double>> scored = new ArrayList<>();
         for (Song s : allSongs) {
             if (s.getId() != null && s.getId().equals(target.getId())) continue;
             if (s.getLyrics() == null) continue;
 
-            double[] vec = buildTFVector(termFrequency(s.getLyrics()), vocabList);
+            double[] vec = buildTFIDFVector(
+                    termFrequency(s.getLyrics()), vocabList, df, N);
+
             double sim = cosineSimilarity(targetVec, vec);
             scored.add(Map.entry(s, sim));
         }
 
-        // Sort by similarity descending
         return scored.stream()
                 .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
                 .limit(k)
@@ -101,21 +119,29 @@ public class SongRecommender {
                 .collect(Collectors.toList());
     }
 
-    // Optional: return scores alongside songs
-    public static List<Map.Entry<Song, Double>> recommendWithScores(Song target, List<Song> allSongs, int k) {
+    // ------------------------
+    // 6. Recommend with Scores (for debugging/reporting)
+    // ------------------------
+    public static List<Map.Entry<Song, Double>> recommendWithScores(
+            Song target, List<Song> allSongs, int k) {
+
         if (target == null || target.getLyrics() == null) return Collections.emptyList();
 
-        Set<String> vocab = buildVocab(allSongs);
-        List<String> vocabList = new ArrayList<>(vocab);
+        Map<String, Integer> df = buildDocFrequency(allSongs);
+        List<String> vocabList = new ArrayList<>(df.keySet());
+        int N = allSongs.size();
 
-        double[] targetVec = buildTFVector(termFrequency(target.getLyrics()), vocabList);
+        double[] targetVec = buildTFIDFVector(
+                termFrequency(target.getLyrics()), vocabList, df, N);
 
         List<Map.Entry<Song, Double>> scored = new ArrayList<>();
         for (Song s : allSongs) {
             if (s.getId() != null && s.getId().equals(target.getId())) continue;
             if (s.getLyrics() == null) continue;
 
-            double[] vec = buildTFVector(termFrequency(s.getLyrics()), vocabList);
+            double[] vec = buildTFIDFVector(
+                    termFrequency(s.getLyrics()), vocabList, df, N);
+
             double sim = cosineSimilarity(targetVec, vec);
             scored.add(Map.entry(s, sim));
         }
