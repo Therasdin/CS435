@@ -1,18 +1,21 @@
 package FinalProject;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * SongRecommender - recommends top K similar songs based on lyric content.
+ * Uses TF vectors and cosine similarity.
+ */
 public class SongRecommender {
 
     // ------------------------
     // 1. Compute TF map
     // ------------------------
+    private static final Set<String> STOPWORDS = Set.of(
+        "the", "and", "is", "a", "to", "in", "of", "on", "for", "with"
+    );
+
     private static Map<String, Integer> termFrequency(String text) {
         Map<String, Integer> tf = new HashMap<>();
         if (text == null) return tf;
@@ -22,7 +25,7 @@ public class SongRecommender {
                               .split("\\s+");
 
         for (String t : tokens) {
-            if (t.isBlank()) continue;
+            if (t.isBlank() || STOPWORDS.contains(t)) continue;
             tf.put(t, tf.getOrDefault(t, 0) + 1);
         }
         return tf;
@@ -34,7 +37,9 @@ public class SongRecommender {
     private static Set<String> buildVocab(List<Song> songs) {
         Set<String> vocab = new HashSet<>();
         for (Song s : songs) {
-            vocab.addAll(termFrequency(s.getLyrics()).keySet());
+            if (s.getLyrics() != null) {
+                vocab.addAll(termFrequency(s.getLyrics()).keySet());
+            }
         }
         return vocab;
     }
@@ -68,24 +73,22 @@ public class SongRecommender {
     // 5. Recommend top K similar songs
     // ------------------------
     public static List<Song> recommend(Song target, List<Song> allSongs, int k) {
+        if (target == null || target.getLyrics() == null) return Collections.emptyList();
 
         // Build vocabulary across all songs
         Set<String> vocab = buildVocab(allSongs);
         List<String> vocabList = new ArrayList<>(vocab);
 
         // Target vector
-        double[] targetVec = buildTFVector(
-                termFrequency(target.getLyrics()), vocabList);
+        double[] targetVec = buildTFVector(termFrequency(target.getLyrics()), vocabList);
 
         // Compute similarity for every song
         List<Map.Entry<Song, Double>> scored = new ArrayList<>();
-
         for (Song s : allSongs) {
-            if (s.getId().equals(target.getId())) continue;
+            if (s.getId() != null && s.getId().equals(target.getId())) continue;
+            if (s.getLyrics() == null) continue;
 
-            double[] vec = buildTFVector(
-                    termFrequency(s.getLyrics()), vocabList);
-
+            double[] vec = buildTFVector(termFrequency(s.getLyrics()), vocabList);
             double sim = cosineSimilarity(targetVec, vec);
             scored.add(Map.entry(s, sim));
         }
@@ -95,6 +98,31 @@ public class SongRecommender {
                 .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
                 .limit(k)
                 .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+    }
+
+    // Optional: return scores alongside songs
+    public static List<Map.Entry<Song, Double>> recommendWithScores(Song target, List<Song> allSongs, int k) {
+        if (target == null || target.getLyrics() == null) return Collections.emptyList();
+
+        Set<String> vocab = buildVocab(allSongs);
+        List<String> vocabList = new ArrayList<>(vocab);
+
+        double[] targetVec = buildTFVector(termFrequency(target.getLyrics()), vocabList);
+
+        List<Map.Entry<Song, Double>> scored = new ArrayList<>();
+        for (Song s : allSongs) {
+            if (s.getId() != null && s.getId().equals(target.getId())) continue;
+            if (s.getLyrics() == null) continue;
+
+            double[] vec = buildTFVector(termFrequency(s.getLyrics()), vocabList);
+            double sim = cosineSimilarity(targetVec, vec);
+            scored.add(Map.entry(s, sim));
+        }
+
+        return scored.stream()
+                .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                .limit(k)
                 .collect(Collectors.toList());
     }
 }
