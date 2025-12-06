@@ -3,7 +3,7 @@ package FinalProject;
 import java.io.Serializable;
 
 /**
- * Song Data Model - used by Spark to create a DataFrame
+ * Song Data Model - used by Spark/Hadoop to create a DataFrame or pass objects in MapReduce
  */
 public class Song implements Serializable {
 
@@ -17,10 +17,10 @@ public class Song implements Serializable {
     private String id;
     private String language;
 
-    // Empty constructor required for Spark
+    // Empty constructor required for Spark/Hadoop
     public Song() {}
 
-    // Getters and setters (Spark requires proper JavaBean format)
+    // Getters and setters
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
 
@@ -47,4 +47,34 @@ public class Song implements Serializable {
 
     public String getLanguage() { return language; }
     public void setLanguage(String language) { this.language = language; }
+
+    // ------------------------
+    // Extra methods for debugging and collections
+    // ------------------------
+
+    @Override
+    public String toString() {
+        return "Song{" +
+                "title='" + title + '\'' +
+                ", tag='" + tag + '\'' +
+                ", artist='" + artist + '\'' +
+                ", year='" + year + '\'' +
+                ", views=" + views +
+                ", id='" + id + '\'' +
+                ", language='" + language + '\'' +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Song)) return false;
+        Song song = (Song) o;
+        return id != null && id.equals(song.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
 }
