@@ -93,7 +93,7 @@ public class SongRecommender {
         // Build IDF
         Map<String, Integer> df = buildDocFrequency(allSongs);
         List<String> vocabList = new ArrayList<>(df.keySet());
-        int N = allSongs.size();
+        int N = Math.max(1, allSongs.size());
 
         // Target TF-IDF vector
         double[] targetVec = buildTFIDFVector(
@@ -129,7 +129,7 @@ public class SongRecommender {
 
         Map<String, Integer> df = buildDocFrequency(allSongs);
         List<String> vocabList = new ArrayList<>(df.keySet());
-        int N = allSongs.size();
+        int N = Math.max(1, allSongs.size());
 
         double[] targetVec = buildTFIDFVector(
                 termFrequency(target.getLyrics()), vocabList, df, N);
