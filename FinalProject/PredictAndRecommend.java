@@ -47,6 +47,12 @@ public class PredictAndRecommend {
         // Train genre classifier
         // ------------------------
         SongGenreClassifier classifier = new SongGenreClassifier();
+
+        if (dataset.isEmpty()) {
+            System.err.println("Dataset is empty. Cannot train classifier.");
+            System.exit(3);
+        }
+
         classifier.train(dataset);
         System.out.println("Genre classifier trained on dataset.");
 
@@ -73,3 +79,4 @@ public class PredictAndRecommend {
         }
     }
 }
+
