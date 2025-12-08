@@ -52,6 +52,24 @@ Only rows with non‑empty lyrics are used for training.
 javac FinalProject/*.java
 
 ---
+## Move everything to the right director 
+cd ~/PA3/CS435/FinalProject/src/main/java
+mkdir FinalProject
+mv *.java FinalProject/
+
+## Download required JARs
+wget https://repo1.maven.org/maven2/com/opencsv/opencsv/5.9/opencsv-5.9.jar
+wget https://repo1.maven.org/maven2/org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0.jar
+
+## Compile all Java files
+javac -cp .:opencsv-5.9.jar:commons-lang3-3.14.0.jar FinalProject/*.java
+
+## Run using default lyrics or dataset
+java -cp .:opencsv-5.9.jar:commons-lang3-3.14.0.jar FinalProject.PredictAndRecommend ../../../song_lyrics.csv
+
+## Run with custom lyrics
+java -cp .:opencsv-5.9.jar:commons-lang3-3.14.0.jar FinalProject.PredictAndRecommend ../../../song_lyrics.csv "walking down this lonely road"
+
 
 ## Run
 java FinalProject.PredictAndRecommend songs.csv
